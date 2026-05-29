@@ -1,55 +1,53 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response
-import fitz
+import fitz  # PyMuPDF
 
 app = FastAPI()
 
 @app.get("/")
 def home():
-    # Cambiamos el mensaje para que sepas con total seguridad en el navegador que se ha actualizado
     return {"status": "PDF backend V2 funcionando perfectamente"}
 
 @app.post("/edit-pdf")
 async def edit_pdf(
     file: UploadFile = File(...),
     text: str = Form(""),
-    page_num: int = Form(0),       # Opcional: por defecto la primera página
-    pos_x: float = Form(100.0),    # Opcional: posición X por defecto
-    pos_y: float = Form(100.0),    # Opcional: posición Y por defecto
-    fontsize: int = Form(20)       # Opcional: tamaño de letra por defecto
+    page_num: int = Form(0),
+    pos_x: float = Form(0.0), # Cambiado a 0.0 para mayor precisión inicial
+    pos_y: float = Form(0.0),
+    fontsize: int = Form(12)   # Reducido a 12 para formularios estándar
 ):
-    # Validación para asegurarse de que es un PDF
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="El archivo enviado debe ser un PDF")
 
     try:
-        # 1. Leer los bytes del archivo enviado desde Android
         pdf_bytes = await file.read()
-        
-        # 2. Abrir el PDF en la memoria RAM
         doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-
-        # 3. Validar que la página solicitada exista en el PDF
-        if page_num < 0 or page_num >= len(doc):
-            raise HTTPException(status_code=400, detail="El número de página solicitado no existe")
-
-        # 4. Seleccionar la página e insertar el texto
-        page = doc[page_num]
-        page.insert_text((pos_x, pos_y), text, fontsize=fontsize)
-
-        # 5. --- ¡AQUÍ ESTÁ EL ARREGLO! ---
-        # Cambiamos 'doc.write()' por 'doc.tobytes()' para extraer correctamente el PDF modificado
-        output_bytes = doc.tobytes()
         
-        # 6. Cerrar el documento para liberar memoria
+        if page_num < 0 or page_num >= len(doc):
+            raise HTTPException(status_code=400, detail="Página fuera de rango")
+
+        page = doc[page_num]
+        
+        # MEJORA: Definir color negro exacto y fuente estándar (Helvética)
+        # Esto asegura que el texto se vea integrado con la fuente del documento
+        page.insert_text(
+            (pos_x, pos_y), 
+            text, 
+            fontsize=fontsize, 
+            color=(0, 0, 0),    # Negro puro
+            fontname="helv"     # Fuente estándar del sistema PDF
+        )
+
+        # Extraer bytes correctamente
+        output_bytes = doc.tobytes()
         doc.close()
 
-        # 7. Enviar el PDF modificado de vuelta a Android
         return Response(
             content=output_bytes,
-            media_type="application/pdf"
+            media_type="application/pdf",
+            headers={"Content-Disposition": "attachment; filename=editado.pdf"}
         )
         
     except Exception as e:
-        # Si algo falla internamente, te avisará detalladamente en los logs de Railway
-        raise HTTPException(status_code=500, detail=f"Error interno procesando el PDF: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno: {str(e)}")
