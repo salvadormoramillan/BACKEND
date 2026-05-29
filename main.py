@@ -1,7 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import Response, JSONResponse
 import fitz  # PyMuPDF
-from weasyprint import HTML
 
 app = FastAPI(title="PDF Editor Backend")
 
@@ -290,37 +289,3 @@ async def pdf_to_html(file: UploadFile = File(...)):
     """
 
     return Response(content=full_html, media_type="text/html")
-
-
-# --------------------------------------------------
-# 5. HTML EDITADO A PDF
-# --------------------------------------------------
-
-@app.post("/html-to-pdf")
-async def html_to_pdf(html: str = Form(...)):
-    try:
-        pdf_bytes = HTML(string=html).write_pdf()
-
-        return Response(
-            content=pdf_bytes,
-            media_type="application/pdf",
-            headers={"Content-Disposition": "attachment; filename=editado.pdf"}
-        )
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generando PDF: {str(e)}")
-
-
-# --------------------------------------------------
-# 6. COPIA SIMPLE DEL PDF ORIGINAL
-# --------------------------------------------------
-
-@app.post("/copy-pdf")
-async def copy_pdf(file: UploadFile = File(...)):
-    pdf_bytes = await file.read()
-
-    return Response(
-        content=pdf_bytes,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=copia_original.pdf"}
-    )
