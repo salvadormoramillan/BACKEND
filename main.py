@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import Response
 import fitz
 
@@ -11,7 +11,7 @@ def home():
 @app.post("/edit-pdf")
 async def edit_pdf(
     file: UploadFile = File(...),
-    text: str = ""
+    text: str = Form("")
 ):
     pdf_bytes = await file.read()
 
