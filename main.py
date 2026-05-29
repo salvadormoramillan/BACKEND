@@ -204,30 +204,36 @@ async def fill_form(
     pdf_bytes = await file.read()
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
-    found = False
+    encontrados = []
 
     for page in doc:
         widgets = page.widgets()
         if widgets:
             for widget in widgets:
-                if widget.field_name == field_name:
+                encontrados.append(widget.field_name)
+
+                if str(widget.field_name).strip() == str(field_name).strip():
                     widget.field_value = value
                     widget.update()
-                    found = True
 
-    if not found:
-        doc.close()
-        raise HTTPException(status_code=404, detail="Campo no encontrado")
+                    output = doc.tobytes()
+                    doc.close()
 
-    output = doc.tobytes()
+                    return Response(
+                        content=output,
+                        media_type="application/pdf",
+                        headers={
+                            "Content-Disposition":
+                            "attachment; filename=formulario_rellenado.pdf"
+                        }
+                    )
+
     doc.close()
 
-    return Response(
-        content=output,
-        media_type="application/pdf",
-        headers={"Content-Disposition": "attachment; filename=formulario_rellenado.pdf"}
-    )
-
+    return {
+        "error": "Campo no encontrado",
+        "campos_detectados": encontrados
+    }
 
 # --------------------------------------------------
 # 4. PDF A HTML EDITABLE
