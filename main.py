@@ -9,13 +9,16 @@ def home():
     return {"status": "PDF backend funcionando"}
 
 @app.post("/edit-pdf")
-async def edit_pdf(file: UploadFile = File(...)):
+async def edit_pdf(
+    file: UploadFile = File(...),
+    text: str = ""
+):
     pdf_bytes = await file.read()
 
     doc = fitz.open(stream=pdf_bytes, filetype="pdf")
 
     page = doc[0]
-    page.insert_text((100, 100), "PDF EDITADO", fontsize=20)
+    page.insert_text((100, 100), text, fontsize=20)
 
     output_bytes = doc.write()
     doc.close()
